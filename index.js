@@ -1,7 +1,8 @@
 var express = require("express"),
 	bodyParser = require("body-parser"),
 	mongoose	= require("mongoose"),
-	ejs          = require("ejs");
+	ejs          = require("ejs"),
+    x=0;
 
 const fs = require("fs");
 var MongoClient = require('mongodb').MongoClient;
@@ -83,26 +84,21 @@ app.post('/search',(req,res)=>{
         
          collection.find().toArray(function(err, items) {
             if(err) throw err;    
-//            fs.readFileSync(items);
-//             fs.writeFlieSync('Marksheet.txt','utf-8');
-//            console.log( fs.readFileSync('Marksheet',items));
              var j =items.length;
-             console.log(j);
-             var i;
-             for(i=0;i<=j;i++){
-                 if(items[i].regNo == person){
+             for(var i=0;i<=j;i++){
+                    if(items[i].regNo == person){
                      fs.writeFileSync('Marksheet.txt',JSON.stringify(items[i]))
-                     var item = items[i];
-                     res.render('student',{item:item});
-                 }else{
-                     
-                      res.send(`<script>alert("Please enter a valid Register number")</script>`);
+                     var item = items[i]
+                     res.render('student',{item:item})
+                     const k = 1;
                  }
+                 else{
+                     x++;
+                     if(x==j){
+                         res.send(`<script>alert("Please enter a valid Register number")</script>`);
+                     }}
              }
-//            re
-//             var data = JSON.stringify(items);
-//
-//             fs.appendFile('Marksheet.txt',data)
+         
          });
         
     });
