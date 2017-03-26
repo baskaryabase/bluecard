@@ -2,24 +2,40 @@ var express = require("express"),
 	bodyParser = require("body-parser"),
 	mongoose	= require("mongoose"),
 	ejs          = require("ejs"),
+    passport    = require("passport"),
+    passportLocal = require("passport-local"),
+    user           = require("./models/user"),
+    expressSession = require("express-session"),
+    passportLocalMongoose = require("passport-local-mongoose"),
     x=0;
 
 const fs = require("fs");
 var MongoClient = require('mongodb').MongoClient;
 var app = express();
-const elasticsearch = require('elasticsearch');
 mongoose.connect('mongodb://localhost/bluecard')
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 
-const esClient = new elasticsearch.Client({
-  host: '127.0.0.1:8085',
-  log: 'error'
+app.use(require("express-session")({
+    secret: "Guru did the app!",
+    resave: false,
+    saveUninitialized: false
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new passportLocal(user.authenticate()));
+passport.serializeUser(user.serializeUser());
+passport.deserializeUser(user.deserializeUser());
+
+app.use((req, res, next)=>{
+   res.locals.currentUser = req.user;
+   next();
 });
 
-app.get('/',(req,res)=>{
+
+app.get('/bluecard',isLoggedIn,(req,res)=>{
     res.render('bluecard');
 })
 
@@ -85,35 +101,64 @@ app.post('/search',(req,res)=>{
          collection.find().toArray(function(err, items) {
             if(err) throw err;    
              var j =items.length;
-             for(var i=0;i<=j;i++){
+             for(var i=0;i<j;i++){
                     if(items[i].regNo == person){
-                     fs.writeFileSync('Marksheet.txt',JSON.stringify(items[i]))
-                     var item = items[i]
+                     var item = items[i];
                      res.render('student',{item:item})
-                     const k = 1;
                  }
-                 else{
+                 else{  
                      x++;
                      if(x==j){
-                         res.send(`<script>alert("Please enter a valid Register number")</script>`);
-                     }}
+                     res.send(`<script>alert("Please enter a valid Register number")</script>`);
+                    }}
              }
          
          });
         
     });
                 
-});
-    
-    
+});   
 })
 
-//app.get('/search',(req,res)=>{
-//    
-//})
-//
+app.get("/register",(req, res)=>{
+   res.render("register"); 
+});
 
+app.post('/register',(req,res)=>{
+    var newUser = new user({username: req.body.username});
+    user.register(newUser, req.body.password, (err, user)=>{
+        if(err){
+            console.log(err);
+            return res.render("register");
+        }
+        passport.authenticate("local")(req, res,()=>{
+           res.redirect("/bluecard"); 
+        });
+    });
+});
+    
+app.get('/',(req,res)=>{
+  res.render('login')  
+})
 
+app.post("/login", passport.authenticate("local", 
+    {
+        successRedirect: "/bluecard",
+        failureRedirect: "/"
+    }),(req, res)=>{
+});
+
+function isLoggedIn(req,res,next){
+    if(req.isAuthenticated()){
+        return next();
+    }else{
+        res.redirect('/')
+    }
+}
+app.get('/logout',(req,res)=>{
+    req.logout();
+    res.redirect('/');
+})
 
 app.listen(8085,()=>{
     console.log("started");
